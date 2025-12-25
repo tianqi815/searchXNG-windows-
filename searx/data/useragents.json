@@ -1,8 +1,53 @@
 {
     "os": [
         "Windows NT 10.0; Win64; x64",
+        "X11; Linux x86_64",
+        "Macintosh; Intel Mac OS X 10_15_7",
+        "Windows NT 10.0; Win64; x64",
         "X11; Linux x86_64"
     ],
+    "browsers": {
+        "firefox": {
+            "ua": "Mozilla/5.0 ({os}; rv:{version}) Gecko/20100101 Firefox/{version}",
+            "versions": [
+                "131.0",
+                "130.0",
+                "129.0",
+                "128.0",
+                "127.0"
+            ]
+        },
+        "chrome": {
+            "ua": "Mozilla/5.0 ({os}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{version} Safari/537.36",
+            "versions": [
+                "131.0.6778.0",
+                "130.0.6723.0",
+                "129.0.6668.0",
+                "128.0.6613.0",
+                "127.0.6533.0"
+            ]
+        },
+        "edge": {
+            "ua": "Mozilla/5.0 ({os}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{version} Safari/537.36 Edg/{version}",
+            "versions": [
+                "131.0.6778.0",
+                "130.0.6723.0",
+                "129.0.6668.0",
+                "128.0.6613.0",
+                "127.0.6533.0"
+            ]
+        },
+        "safari": {
+            "ua": "Mozilla/5.0 ({os}) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/{version} Safari/605.1.15",
+            "versions": [
+                "18.1",
+                "18.0",
+                "17.6",
+                "17.5",
+                "17.4"
+            ]
+        }
+    },
     "ua": "Mozilla/5.0 ({os}; rv:{version}) Gecko/20100101 Firefox/{version}",
     "versions": [
         "145.0",

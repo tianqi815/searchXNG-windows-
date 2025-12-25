@@ -85,7 +85,29 @@ def gen_useragent(os_string: str | None = None) -> str:
     """Return a random browser User Agent
 
     See searx/data/useragents.json
+    
+    Supports multiple browser types (Firefox, Chrome, Edge, Safari) for better
+    anti-bot detection evasion. If 'browsers' key exists in useragents.json,
+    randomly selects a browser type; otherwise falls back to legacy format.
     """
+    # Check if new multi-browser format is available
+    if 'browsers' in USER_AGENTS and isinstance(USER_AGENTS['browsers'], dict):
+        # Randomly select a browser type
+        browser_types = list(USER_AGENTS['browsers'].keys())
+        browser_type = choice(browser_types)
+        browser_config = USER_AGENTS['browsers'][browser_type]
+        
+        # Get OS and version
+        selected_os = os_string or choice(USER_AGENTS['os'])
+        selected_version = choice(browser_config['versions'])
+        
+        # Format the User-Agent string
+        return browser_config['ua'].format(
+            os=selected_os,
+            version=selected_version,
+        )
+    
+    # Fallback to legacy format for backward compatibility
     return USER_AGENTS['ua'].format(
         os=os_string or choice(USER_AGENTS['os']),
         version=choice(USER_AGENTS['versions']),

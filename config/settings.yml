@@ -1,0 +1,100 @@
+# SearXNG settings
+
+use_default_settings: true
+
+general:
+  debug: true
+  instance_name: "SearXNG"
+
+search:
+  safe_search: 2
+  autocomplete: 'duckduckgo'
+  formats:
+    - html
+
+server:
+  # Is overwritten by ${SEARXNG_SECRET}
+  secret_key: "8348feb9de6f502c1f9de62718753a68"
+  limiter: false  # 开发环境禁用，需要Valkey/Redis
+  image_proxy: true
+  # public URL of the instance, to ensure correct inbound links. Is overwritten
+  # by ${SEARXNG_BASE_URL}.
+  # base_url: http://example.com/location
+
+# 网络连接配置 - 解决搜索间歇性失效问题
+# 只覆盖必要的连接池设置，保留其他默认值
+outgoing:
+  pool_connections: 200  # 增加最大连接数（默认100）
+  pool_maxsize: 50  # 增加最大keep-alive连接数（默认10），解决连接池耗尽问题
+  
+  # 代理池配置 - 轮换使用多个代理IP以避免被限制
+  # 支持 http, https, socks5, socks5h 等协议
+  # 如果配置多个代理，SearXNG 会自动轮换使用（round-robin）
+  # 示例配置（请根据实际情况修改）：
+  # proxies:
+  #   http:
+  #     - http://proxy1.example.com:8080
+  #     - http://proxy2.example.com:8080
+  #     - socks5://proxy3.example.com:1080
+  #   https:
+  #     - http://proxy1.example.com:8080
+  #     - http://proxy2.example.com:8080
+  #     - socks5://proxy3.example.com:1080
+  # 
+  # 或者使用单个代理（所有协议共用）：
+  # proxies: http://proxy.example.com:8080
+  # 
+  # 或者使用字典格式：
+  # proxies:
+  #   http: http://proxy.example.com:8080
+  #   https: http://proxy.example.com:8080
+
+# valkey:
+#   # URL to connect valkey database. Is overwritten by ${SEARXNG_VALKEY_URL}.
+#   # 开发环境不需要Valkey，已注释
+#   url: valkey://localhost:6379/0
+
+# preferences:
+#   lock:
+#     - autocomplete
+#     - method
+
+# 启用一些常用的搜索引擎
+engines:
+  # 启用duckduckgo（默认搜索引擎）
+  - name: duckduckgo
+    disabled: false
+  
+  # 启用google
+  - name: google
+    disabled: false
+    # Google 引擎专用代理池配置（可选）
+    # 如果配置了代理池，每次请求会轮换使用不同的代理IP
+    # 这样可以避免单个IP请求过多被Google限制
+    # 
+    # 示例：为 Google 引擎配置专用代理池
+    # proxies:
+    #   http:
+    #     - http://proxy1.example.com:8080
+    #     - http://proxy2.example.com:8080
+    #     - socks5://proxy3.example.com:1080
+    #   https:
+    #     - http://proxy1.example.com:8080
+    #     - http://proxy2.example.com:8080
+    #     - socks5://proxy3.example.com:1080
+  
+  # 启用wikipedia
+  - name: wikipedia
+    disabled: false
+  
+  # 启用wikidata
+  - name: wikidata
+    disabled: false
+  
+  # 启用startpage
+  - name: startpage
+    disabled: false
+  
+  # 启用brave
+  - name: brave
+    disabled: false

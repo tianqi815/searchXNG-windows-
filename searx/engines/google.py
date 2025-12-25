@@ -273,8 +273,39 @@ def get_google_info(params: "OnlineParams", eng_traits: EngineTraits) -> dict[st
 
 
 def detect_google_sorry(resp):
+    """检测 Google 的各种反爬虫响应
+    
+    包括：
+    - sorry.google.com 重定向
+    - 异常流量检测
+    - reCAPTCHA 挑战
+    - 空结果页面（可能被阻止）
+    """
+    # 检测 sorry.google.com 重定向
     if resp.url.host == 'sorry.google.com' or resp.url.path.startswith('/sorry'):
-        raise SearxEngineCaptchaException()
+        raise SearxEngineCaptchaException(message='Google Sorry page detected')
+    
+    # 检测异常流量提示
+    if 'unusual traffic' in resp.text.lower() or 'unusual activity' in resp.text.lower():
+        logger.warning("Google detected unusual traffic")
+        raise SearxEngineCaptchaException(message='Google detected unusual traffic')
+    
+    # 检测 reCAPTCHA 挑战
+    if 'verify you\'re not a robot' in resp.text.lower() or 'recaptcha' in resp.text.lower():
+        logger.warning("Google reCAPTCHA challenge detected")
+        raise SearxEngineCaptchaException(message='Google reCAPTCHA challenge')
+    
+    # 检测是否返回了空结果页面（可能是被阻止）
+    if resp.status_code == 200 and len(resp.text) < 1000:
+        # 检查是否包含错误信息
+        if 'blocked' in resp.text.lower() or 'access denied' in resp.text.lower():
+            logger.warning("Google returned suspiciously short response with blocking message")
+            raise SearxEngineCaptchaException(message='Google access denied')
+    
+    # 检测 403 状态码
+    if resp.status_code == 403:
+        logger.warning("Google returned 403 Forbidden")
+        raise SearxEngineCaptchaException(message='Google 403 Forbidden')
 
 
 def request(query: str, params: "OnlineParams") -> None:
@@ -321,6 +352,23 @@ def request(query: str, params: "OnlineParams") -> None:
 
     params['cookies'] = google_info['cookies']
     params['headers'].update(google_info['headers'])
+    
+    # 增强 HTTP 头以更好地模拟真实浏览器
+    params['headers'].update({
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'Accept-Encoding': 'gzip, deflate, br, zstd',
+        'Accept-Language': google_info.get('headers', {}).get('Accept-Language', 'en-US,en;q=0.9'),
+        'Cache-Control': 'max-age=0',
+        'DNT': '1',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',  # 改为 document 而不是 empty
+        'Sec-Fetch-Mode': 'navigate',   # 改为 navigate
+        'Sec-Fetch-Site': 'none',       # 改为 none（首次访问）
+        'Sec-Fetch-User': '?1',
+        'Sec-GPC': '1',
+        'Connection': 'keep-alive',
+        'Referer': 'https://www.google.com/',
+    })
 
 
 # =26;[3,"dimg_ZNMiZPCqE4apxc8P3a2tuAQ_137"]a87;data:image/jpeg;base64,/9j/4AAQSkZJRgABA
@@ -347,7 +395,13 @@ def parse_data_images(text: str):
 def response(resp: "SXNG_Response"):
     """Get response from google's search request"""
     # pylint: disable=too-many-branches, too-many-statements
+    # 首先检测各种反爬虫机制
     detect_google_sorry(resp)
+    
+    # 记录响应信息用于调试
+    logger.debug("Google response URL: %s", resp.url)
+    logger.debug("Response status: %s, Content length: %d", resp.status_code, len(resp.text) if resp.text else 0)
+    
     data_image_map = parse_data_images(resp.text)
 
     results = EngineResults()

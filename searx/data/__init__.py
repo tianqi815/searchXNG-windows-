@@ -16,12 +16,13 @@ from .currencies import CurrenciesDB
 from .tracker_patterns import TrackerPatternsDB
 
 
-class UserAgentType(t.TypedDict):
+class UserAgentType(t.TypedDict, total=False):
     """Data structure of ``useragents.json``"""
 
     os: list[str]
     ua: str
     versions: list[str]
+    browsers: dict[str, dict[str, str | list[str]]]
 
 
 class WikiDataUnitType(t.TypedDict):

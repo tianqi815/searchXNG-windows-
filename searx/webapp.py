@@ -249,7 +249,9 @@ def get_result_template(theme_name: str, template_name: str):
     themed_path = theme_name + '/result_templates/' + template_name
     if themed_path in result_templates:
         return themed_path
-    return 'result_templates/' + template_name
+    # Fallback: try to return the themed path anyway (Jinja2 will handle the error)
+    # This ensures we always return a path relative to the template directory
+    return themed_path
 
 
 _STATIC_FILES: list[str] = []
@@ -270,15 +272,24 @@ def custom_url_for(endpoint: str, **values):
         #     static/themes/<theme_name>/img/favicon.png
 
         arg_filename = values["filename"]
-        if arg_filename not in _STATIC_FILES:
+        # Normalize filename for comparison (use forward slashes)
+        arg_filename_normalized = arg_filename.replace('\\', '/')
+        if arg_filename_normalized not in _STATIC_FILES:
             # try file in the current theme
             theme_name = sxng_request.preferences.get_value("theme")
-            theme_filename = f"themes/{theme_name}/{arg_filename}"
+            theme_filename = f"themes/{theme_name}/{arg_filename_normalized}"
             if theme_filename in _STATIC_FILES:
                 values["filename"] = theme_filename
+            else:
+                # Keep original filename if not found in theme
+                values["filename"] = arg_filename_normalized
+        else:
+            values["filename"] = arg_filename_normalized
 
         app_prefix = url_for("index")
-        return f"{app_prefix}static/{values['filename']}"
+        # Normalize path separators for URLs (Windows uses \ but URLs need /)
+        filename = values['filename'].replace('\\', '/')
+        return f"{app_prefix}static/{filename}"
 
     if endpoint == "info" and "locale" not in values:
 
