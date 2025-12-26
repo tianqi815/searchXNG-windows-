@@ -26,6 +26,8 @@ server:
 outgoing:
   pool_connections: 200  # 增加最大连接数（默认100）
   pool_maxsize: 50  # 增加最大keep-alive连接数（默认10），解决连接池耗尽问题
+  request_timeout: 10.0  # 增加请求超时时间（默认3.0秒），解决百度等引擎超时问题
+  max_request_timeout: 30.0  # 最大请求超时时间（秒），防止某些引擎响应过慢
   
   # 代理池配置 - 轮换使用多个代理IP以避免被限制
   # 支持 http, https, socks5, socks5h 等协议
@@ -98,3 +100,8 @@ engines:
   # 启用brave
   - name: brave
     disabled: false
+  
+  # 启用baidu（百度搜索引擎）
+  - name: baidu
+    disabled: false
+    timeout: 15.0  # 为百度设置更长的超时时间（秒），因为百度响应可能较慢
