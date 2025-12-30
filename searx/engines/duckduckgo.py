@@ -105,21 +105,28 @@ def get_vqd(query: str, region: str, force_request: bool = False) -> str:
         return value
 
     logger.debug("vqd: request value from from duckduckgo.com")
-    resp = get(f'https://duckduckgo.com/?q={quote_plus(query)}')
-    if resp.status_code == 200:  # type: ignore
-        value = extr(resp.text, 'vqd="', '"')  # type: ignore
-        if value:
-            logger.debug("vqd value from duckduckgo.com request: '%s'", value)
+    value = ""
+    try:
+        resp = get(f'https://duckduckgo.com/?q={quote_plus(query)}')
+        if resp.status_code == 200:  # type: ignore
+            value = extr(resp.text, 'vqd="', '"')  # type: ignore
+            if value:
+                logger.debug("vqd value from duckduckgo.com request: '%s'", value)
+            else:
+                logger.error("vqd: can't parse value from ddg response (return empty string)")
+                return ""
         else:
-            logger.error("vqd: can't parse value from ddg response (return empty string)")
+            logger.error("vqd: got HTTP %s from duckduckgo.com", resp.status_code)
             return ""
-    else:
-        logger.error("vqd: got HTTP %s from duckduckgo.com", resp.status_code)
+    except Exception as e:
+        # 处理连接超时或其他网络错误
+        logger.error("vqd: failed to get vqd from duckduckgo.com: %s", str(e))
+        return ""
 
     if value:
         cache.set(key=key, value=value)
     else:
-        logger.error("none vqd value from duckduckgo.com: HTTP %s", resp.status_code)
+        logger.error("none vqd value from duckduckgo.com")
     return value
 
 
@@ -310,12 +317,22 @@ def request(query, params):
     params['url'] = url
     params['method'] = 'POST'
 
+    # 增强 HTTP 头以更好地模拟真实浏览器，降低被识别为爬虫的概率
     params['headers']['Content-Type'] = 'application/x-www-form-urlencoded'
     params['headers']['Referer'] = url
+    params['headers']['Origin'] = 'https://html.duckduckgo.com'
+    params['headers']['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8'
+    params['headers']['Accept-Language'] = params['headers'].get('Accept-Language', 'en-US,en;q=0.9')
+    params['headers']['Accept-Encoding'] = 'gzip, deflate, br'
+    params['headers']['Cache-Control'] = 'max-age=0'
+    params['headers']['Connection'] = 'keep-alive'
+    params['headers']['DNT'] = '1'
+    params['headers']['Upgrade-Insecure-Requests'] = '1'
     params['headers']['Sec-Fetch-Dest'] = "document"
     params['headers']['Sec-Fetch-Mode'] = "navigate"  # at least this one is used by ddg's bot detection
     params['headers']['Sec-Fetch-Site'] = "same-origin"
     params['headers']['Sec-Fetch-User'] = "?1"
+    params['headers']['Sec-GPC'] = '1'
 
     logger.debug("param headers: %s", params['headers'])
     logger.debug("param data: %s", params['data'])
@@ -335,7 +352,23 @@ def response(resp) -> EngineResults:
     if resp.status_code == 303:
         return results
 
-    doc = lxml.html.fromstring(resp.text)
+    # 检查响应是否为空
+    if not resp.text or len(resp.text.strip()) == 0:
+        logger.error("DuckDuckGo returned empty response")
+        return results
+
+    # 检测响应状态码
+    if resp.status_code == 403:
+        raise SearxEngineCaptchaException(message='DuckDuckGo 403 Forbidden - possible CAPTCHA or blocking')
+
+    try:
+        doc = lxml.html.fromstring(resp.text)
+    except Exception as e:
+        logger.error("DuckDuckGo: failed to parse HTML response: %s", str(e))
+        # 检查是否是验证码页面
+        if 'challenge' in resp.text.lower() or 'captcha' in resp.text.lower():
+            raise SearxEngineCaptchaException(message='DuckDuckGo CAPTCHA detected (parse failed)')
+        return results
 
     if is_ddg_captcha(doc):
         # set suspend time to zero is OK --> ddg does not block the IP

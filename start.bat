@@ -21,6 +21,7 @@ echo.
 
 echo [2/3] 设置环境变量...
 set SEARXNG_SETTINGS_PATH=config\settings.yml
+set SEARXNG_BIND_ADDRESS=0.0.0.0
 echo ✓ 环境变量已设置
 echo.
 
@@ -28,7 +29,8 @@ echo [3/3] 启动SearXNG服务器...
 echo.
 echo ========================================
 echo   服务器正在启动...
-echo   访问地址: http://127.0.0.1:8888
+echo   本地访问地址: http://127.0.0.1:8888
+echo   内网访问地址: http://172.31.61.220:8888
 echo   按 Ctrl+C 停止服务器
 echo ========================================
 echo.

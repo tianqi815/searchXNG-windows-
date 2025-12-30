@@ -57,6 +57,8 @@ class Search:
         super().__init__()
         self.search_query: "SearchQuery" = search_query
         self.result_container: ResultContainer = ResultContainer()
+        # 将查询关键词传递给结果容器，用于计算关键词匹配度
+        self.result_container.query = search_query.query
         self.start_time: float | None = None
         self.actual_timeout: float | None = None
 

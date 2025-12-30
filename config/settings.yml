@@ -105,3 +105,28 @@ engines:
   - name: baidu
     disabled: false
     timeout: 15.0  # 为百度设置更长的超时时间（秒），因为百度响应可能较慢
+    # 百度引擎专用代理配置 - 用于绕过IP封锁
+    # 如果您的IP被百度封锁，可以通过代理使用其他IP访问
+    # 
+    # 支持的代理协议：http://, https://, socks5://, socks5h://
+    # 支持的代理格式：
+    #   - 单个代理：proxies: http://proxy.example.com:8080
+    #   - 带认证：proxies: http://username:password@proxy.example.com:8080
+    #   - 本地代理（如Clash、V2Ray）：proxies: http://127.0.0.1:7890
+    # 
+    # 如果您有代理，请取消下面的注释并替换为您的实际代理地址：
+    # proxies: http://your-proxy.com:8080
+    # 
+    # 或者使用本地代理（如Clash默认端口7890）：
+    # proxies: http://127.0.0.1:7890
+    # 
+    # 如果没有代理，可以：
+    # 1. 使用VPN软件（如Clash、V2Ray等），然后配置本地代理地址
+    # 2. 购买代理服务（如机场、代理服务商等）
+    # 3. 等待IP解封（通常24小时后会自动解封）
+    # 4. 暂时禁用百度引擎，使用其他搜索引擎替代
+  
+  # 启用duckduckgo（DuckDuckGo搜索引擎）
+  - name: duckduckgo
+    disabled: false
+    timeout: 12.0  # 为DuckDuckGo设置更长的超时时间（秒），解决连接超时问题

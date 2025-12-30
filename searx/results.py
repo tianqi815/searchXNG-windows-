@@ -17,6 +17,7 @@ from searx.result_types.answer import AnswerSet, BaseAnswer
 def calculate_score(
     result: MainResult | LegacyResult,
     priority: MainResult.PriorityType,
+    query: str = "",
 ) -> float:
     weight = 1.0
 
@@ -33,7 +34,74 @@ def calculate_score(
         if priority == 'high':
             score += weight
         else:
-            score += weight / position
+            # 降低位置权重的影响：使用平方根或更大的除数，让位置差异的影响变小
+            # 原来：score += weight / position
+            # 现在：使用平方根，让位置权重的影响更平滑
+            # 例如：位置1 -> 1.0, 位置2 -> 0.71, 位置3 -> 0.58, 位置5 -> 0.45
+            # 这样位置差异的影响会减小，关键词匹配度的影响会更大
+            position_weight = weight / (position ** 0.7)  # 使用 0.7 次方，进一步降低位置影响
+            score += position_weight
+
+    # 计算关键词匹配度，提高包含更多关键词的结果的分数
+    if query:
+        query_lower = query.lower()
+        # 提取查询关键词（去除常见停用词和标点）
+        import re
+        # 将查询拆分为关键词，保留重要词汇
+        keywords = [kw.strip() for kw in re.split(r'[\s\+\-\(\)]+', query_lower) if kw.strip() and len(kw.strip()) > 1]
+        
+        if keywords:
+            # 获取结果的标题和内容（兼容 MainResult 和 LegacyResult）
+            if isinstance(result, MainResult):
+                title = (result.title or '').lower()
+                content = (result.content or '').lower()
+            else:
+                # LegacyResult 使用字典访问
+                title = (result.get('title') or '').lower()
+                content = (result.get('content') or '').lower()
+            
+            text = f"{title} {content}"
+            
+            # 计算匹配的关键词数量和匹配度
+            matched_keywords = 0
+            exact_matches = 0
+            title_matches = 0  # 标题中匹配的关键词数量
+            
+            for keyword in keywords:
+                if keyword in text:
+                    matched_keywords += 1
+                    # 检查是否在标题中（标题匹配权重更高）
+                    if keyword in title:
+                        title_matches += 1
+                        exact_matches += 1
+                    # 检查是否是精确匹配（作为完整单词）
+                    elif re.search(r'\b' + re.escape(keyword) + r'\b', text, re.IGNORECASE):
+                        exact_matches += 1
+            
+            # 计算匹配度比例
+            if len(keywords) > 0:
+                match_ratio = matched_keywords / len(keywords)
+                exact_match_ratio = exact_matches / len(keywords)
+                title_match_ratio = title_matches / len(keywords)
+                
+                # 根据匹配度调整分数
+                # 大幅提高关键词匹配度的权重，确保相关性高的结果排在前面
+                keyword_multiplier = 1.0
+                
+                if match_ratio >= 0.9:  # 90% 以上关键词匹配
+                    # 所有关键词都匹配，大幅提高分数（确保能超过位置靠前但不相关的结果）
+                    keyword_multiplier = 10.0 + title_match_ratio * 5.0  # 标题匹配额外奖励
+                elif match_ratio >= 0.7:  # 70% 以上关键词匹配
+                    keyword_multiplier = 6.0 + title_match_ratio * 3.0
+                elif match_ratio >= 0.5:  # 50% 以上关键词匹配
+                    keyword_multiplier = 3.0 + title_match_ratio * 1.5
+                elif match_ratio >= 0.3:  # 30% 以上关键词匹配
+                    keyword_multiplier = 1.5
+                else:  # 少于 30% 关键词匹配，大幅降低分数
+                    keyword_multiplier = 0.1  # 大幅降低不相关结果的分数
+                
+                # 应用关键词匹配度调整
+                score *= keyword_multiplier
 
     return score
 
@@ -79,6 +147,7 @@ class ResultContainer:
         self.on_result: t.Callable[[Result | LegacyResult], bool] = lambda _: True
         self._lock: RLock = RLock()
         self._main_results_sorted: list[MainResult | LegacyResult] = None  # type: ignore
+        self.query: str = ""  # 存储查询关键词，用于计算关键词匹配度
 
     def extend(
         self, engine_name: str | None, results: list[Result | LegacyResult]
@@ -190,9 +259,10 @@ class ResultContainer:
         self._closed = True
 
         for result in self.main_results_map.values():
-            result.score = calculate_score(result, result.priority)
+            result.score = calculate_score(result, result.priority, self.query)
             for eng_name in result.engines:
-                counter_add(result.score, 'engine', eng_name, 'score')
+                # counter_add 需要 int 类型，将分数转换为整数
+                counter_add(int(result.score), 'engine', eng_name, 'score')
 
     def get_ordered_results(self) -> list[MainResult | LegacyResult]:
         """Returns a sorted list of results to be displayed in the main result
